@@ -50,4 +50,6 @@
 
 1. Скачай `index.html` или склонируй репозиторий:
    ```bash
-   https://github.com/CayPlayProjects/Cli_Monilisth.git
+   git clone https://github.com/CayPlayProjects/Cli_Monilisth.git
+
+   gh repo clone CayPlayProjects/Cli_Monilisth
