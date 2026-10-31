@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MONOLITH // CLI — Developer Utility Core</title>
+  <style>
+    :root {
+      --bg: #060709;
+      --surface: #0c0e12;
+      --panel: #12151c;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --accent: #10b981;
+      --accent-dim: rgba(16, 185, 129, 0.12);
+      --border: #1e2430;
+      --err: #f43f5e;
+    }
+    [data-theme="obsidian"] {
+      --bg: #050505; --surface: #0a0a0a; --panel: #111111;
+      --text: #fafafa; --muted: #737373; --accent: #ffffff;
+      --accent-dim: rgba(255, 255, 255, 0.1); --border: #262626;
+    }
+    [data-theme="nord"] {
+      --bg: #242933; --surface: #2e3440; --panel: #3b4252;
+      --text: #eceff4; --muted: #81a1c1; --accent: #88c0d0;
+      --accent-dim: rgba(136, 192, 208, 0.12); --border: #434c5e;
+    }
+    [data-theme="amber"] {
+      --bg: #0a0805; --surface: #120e09; --panel: #1c160e;
+      --text: #ffb000; --muted: #996b00; --accent: #ffcc00;
+      --accent-dim: rgba(255, 204, 0, 0.12); --border: #332613;
+    }
+    [data-theme="light"] {
+      --bg: #f1f5f9; --surface: #ffffff; --panel: #f8fafc;
+      --text: #0f172a; --muted: #64748b; --accent: #0f172a;
+      --accent-dim: rgba(15, 23, 42, 0.08); --border: #e2e8f0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 13.5px; line-height: 1.6;
+      display: flex; justify-content: center; align-items: center;
+      min-height: 100vh; padding: 20px; transition: background 0.2s, color 0.2s;
+    }
+    .monolith {
+      width: 100%; max-width: 900px; height: 85vh;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; display: flex; flex-direction: column;
+      overflow: hidden; box-shadow: 0 25px 70px rgba(0,0,0,0.55);
+    }
+    .header {
+      padding: 13px 20px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--panel); user-select: none;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .monolith-mark {
+      width: 10px; height: 16px; background: var(--accent);
+      border-radius: 2px; display: inline-block;
+    }
+    .brand-title { font-weight: 700; letter-spacing: 0.16em; font-size: 12px; color: var(--text); }
+    .brand-title span { color: var(--muted); font-weight: 400; }
+    .status-bar { display: flex; gap: 14px; color: var(--muted); font-size: 12px; }
+    .output {
+      flex: 1; padding: 22px; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .output::-webkit-scrollbar { width: 6px; }
+    .output::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .line { word-break: break-word; }
+    .cmd-echo { color: var(--muted); }
+    .accent { color: var(--accent); font-weight: 600; }
+    .err { color: var(--err); }
+    .result-box {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--panel); border: 1px solid var(--border);
+      padding: 6px 12px; border-radius: 6px; margin-top: 4px;
+    }
+    .swatch {
+      width: 14px; height: 14px; border-radius: 3px;
+      border: 1px solid rgba(255,255,255,0.2); display: inline-block;
+    }
+    .copy-tag {
+      background: var(--accent-dim); color: var(--accent);
+      border: 1px solid var(--accent); border-radius: 4px;
+      padding: 2px 8px; font-size: 11px; cursor: pointer;
+      font-family: inherit; transition: 0.15s;
+    }
+    .copy-tag:hover { background: var(--accent); color: var(--bg); }
+    .chips {
+      padding: 10px 20px; border-top: 1px solid var(--border);
+      display: flex; gap: 8px; flex-wrap: wrap; background: var(--panel);
+    }
+    .chip {
+      background: var(--surface); border: 1px solid var(--border); color: var(--muted);
+      padding: 4px 10px; border-radius: 6px; font-family: inherit; font-size: 12px;
+      cursor: pointer; transition: 0.15s;
+    }
+    .chip:hover { border-color: var(--accent); color: var(--accent); }
+    .input-area {
+      display: flex; align-items: center; padding: 14px 20px;
+      border-top: 1px solid var(--border); gap: 10px; background: var(--surface);
+    }
+    .prompt { color: var(--accent); font-weight: 600; white-space: nowrap; }
+    input {
+      flex: 1; background: transparent; border: none; outline: none;
+      color: var(--text); font-family: inherit; font-size: 14px;
+    }
+    .grid-help {
+      display: grid; grid-template-columns: 175px 1fr; gap: 6px 16px; margin-top: 6px;
+    }
+    @media (max-width: 600px) {
+      .grid-help { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="monolith" onclick="document.getElementById('cmd').focus()">
+    <div class="header">
+      <div class="brand">
+        <span class="monolith-mark"></span>
+        <div class="brand-title">MONOLITH <span>// CORE v1.0</span></div>
+      </div>
+      <div class="status-bar">
+        <span id="clock">00:00:00</span>
+        <span>·</span>
+        <span id="theme-label">emerald</span>
+      </div>
+    </div>
+
+    <div class="output" id="output">
+      <div class="line"><span class="accent">MONOLITH // CLI</span> — Автономная среда быстрых утилит разработчика.</div>
+      <div class="line" style="color: var(--muted);">Нажми <span class="accent">Tab</span> для автодополнения, <span class="accent">↑/↓</span> для истории команд или используй быстрые кнопки.</div>
+    </div>
+
+    <div class="chips">
+      <button class="chip" onclick="exec('help')">help</button>
+      <button class="chip" onclick="exec('pass 24')">pass 24</button>
+      <button class="chip" onclick="exec('uuid')">uuid</button>
+      <button class="chip" onclick="exec('hash monolith')">hash</button>
+      <button class="chip" onclick="exec('color #10b981')">color</button>
+      <button class="chip" onclick="exec('calc (1920 * 1080) / 1000')">calc</button>
+      <button class="chip" onclick="exec('sys')">sys</button>
+      <button class="chip" onclick="exec('theme')">theme</button>
+      <button class="chip" onclick="exec('clear')">clear</button>
+    </div>
+
+    <div class="input-area">
+      <span class="prompt">core@monolith:~$</span>
+      <input type="text" id="cmd" autofocus autocomplete="off" spellcheck="false" placeholder="Введите команду (help, pass, uuid, hash, color, b64e)...">
+    </div>
+  </div>
+
+  <script>
+    const output = document.getElementById('output');
+    const input = document.getElementById('cmd');
+    const themeLabel = document.getElementById('theme-label');
+    const clock = document.getElementById('clock');
+
+    const cmdList = ['help', 'pass', 'uuid', 'hash', 'color', 'b64e', 'b64d', 'calc', 'time', 'sys', 'theme', 'clear'];
+    const themes = ['emerald', 'obsidian', 'nord', 'amber', 'light'];
+    let history = [];
+    let histIdx = -1;
+
+    setInterval(() => {
+      clock.textContent = new Date().toLocaleTimeString('ru-RU');
+    }, 1000);
+    clock.textContent = new Date().toLocaleTimeString('ru-RU');
+
+    const savedTheme = localStorage.getItem('monolith_theme') || 'emerald';
+    applyTheme(savedTheme, false);
+
+    function applyTheme(name, notify = true) {
+      if (name === 'emerald') document.documentElement.removeAttribute('data-theme');
+      else document.documentElement.setAttribute('data-theme', name);
+      localStorage.setItem('monolith_theme', name);
+      themeLabel.textContent = name;
+      if (notify) print(`Тема интерфейса изменена на <span class="accent">${name}</span>.`);
+    }
+
+    function escapeHTML(str) {
+      return str.replace(/[&<>'"]/g, t => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[t]));
+    }
+
+    function print(html) {
+      const div = document.createElement('div');
+      div.className = 'line';
+      div.innerHTML = html;
+      output.appendChild(div);
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function printCopyable(label, value, extraHTML = '') {
+      const safeVal = escapeHTML(String(value));
+      print(`${label}<br><div class="result-box">${extraHTML}<span>${safeVal}</span><button class="copy-tag" onclick="copyText(this, '${safeVal.replace(/'/g, "\\'")}')">Copy</button></div>`);
+    }
+
+    window.copyText = (btn, text) => {
+      navigator.clipboard.writeText(text);
+      const old = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = old, 1200);
+    };
+
+    async function exec(raw) {
+      const val = raw.trim();
+      if (!val) return;
+
+      history.unshift(val);
+      histIdx = -1;
+      print(`<span class="cmd-echo">core@monolith:~$ ${escapeHTML(val)}</span>`);
+
+      const parts = val.split(/\s+/);
+      const cmd = parts[0].toLowerCase();
+      const argStr = val.slice(parts[0].length).trim();
+
+      switch (cmd) {
+        case 'help':
+          print(`Модули MONOLITH // CORE:
+          <div class="grid-help">
+            <span class="accent">pass [длина]</span><span>Генератор криптостойкого ключа/пароля (4–128)</span>
+            <span class="accent">uuid</span><span>Генерация уникального идентификатора UUID v4</span>
+            <span class="accent">hash [текст]</span><span>Вычисление криптографического хеша SHA-256</span>
+            <span class="accent">color [hex/rgb]</span><span>Конвертер цветов (#10b981 ↔ rgb(16, 185, 129))</span>
+            <span class="accent">b64e / b64d</span><span>Кодирование и декодирование строк Base64 (UTF-8)</span>
+            <span class="accent">calc [выражение]</span><span>Инженерный калькулятор выражений</span>
+            <span class="accent">time [timestamp]</span><span>Текущий Unix Timestamp и конвертер дат</span>
+            <span class="accent">sys</span><span>Сводка по аппаратным потокам, экрану и среде</span>
+            <span class="accent">theme [название]</span><span>Темы: emerald, obsidian, nord, amber, light</span>
+            <span class="accent">clear</span><span>Очистить буфер вывода</span>
+          </div>`);
+          break;
+
+        case 'pass': {
+          const len = Math.min(Math.max(parseInt(argStr) || 20, 4), 128);
+          const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*_+-=';
+          const arr = new Uint32Array(len);
+          crypto.getRandomValues(arr);
+          const pass = Array.from(arr, x => chars[x % chars.length]).join('');
+          printCopyable(`Ключ безопасности (${len} симв.):`, pass);
+          break;
+        }
+
+        case 'uuid': {
+          const id = crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+          });
+          printCopyable('UUID v4:', id);
+          break;
+        }
+
+        case 'hash': {
+          if (!argStr) { print('<span class="err">Укажите строку: hash секретный_текст</span>'); break; }
+          const buf = new TextEncoder().encode(argStr);
+          const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+          const hex = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+          printCopyable(`SHA-256 (${escapeHTML(argStr)}):`, hex);
+          break;
+        }
+
+        case 'color': {
+          if (!argStr) { print('<span class="err">Пример: color #10b981 или color 16, 185, 129</span>'); break; }
+          const hexMatch = argStr.match(/^#?([0-9a-f]{6}|[0-9a-f]{3})$/i);
+          if (hexMatch) {
+            let h = hexMatch[1];
+            if (h.length === 3) h = h.split('').map(c => c + c).join('');
+            const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+            const rgb = `rgb(${r}, ${g}, ${b})`;
+            printCopyable(`HEX #${h.toUpperCase()} → RGB:`, rgb, `<span class="swatch" style="background:#${h}"></span>`);
+          } else {
+            const nums = argStr.match(/\d+/g);
+            if (nums && nums.length >= 3) {
+              const [r, g, b] = nums.slice(0, 3).map(n => Math.min(255, Math.max(0, parseInt(n))));
+              const hex = '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+              printCopyable(`RGB(${r}, ${g}, ${b}) → HEX:`, hex, `<span class="swatch" style="background:${hex}"></span>`);
+            } else {
+              print('<span class="err">Некорректный формат цвета.</span>');
+            }
+          }
+          break;
+        }
+
+        case 'b64e': {
+          if (!argStr) { print('<span class="err">Укажите текст: b64e Monolith Core</span>'); break; }
+          const encoded = btoa(unescape(encodeURIComponent(argStr)));
+          printCopyable('Base64 Encode:', encoded);
+          break;
+        }
+
+        case 'b64d': {
+          if (!argStr) { print('<span class="err">Укажите строку Base64.</span>'); break; }
+          try {
+            const decoded = decodeURIComponent(escape(atob(argStr)));
+            printCopyable('Base64 Decode:', decoded);
+          } catch {
+            print('<span class="err">Ошибка: поврежденная строка Base64.</span>');
+          }
+          break;
+        }
+
+        case 'calc': {
+          if (!argStr) { print('<span class="err">Пример: calc (1920 / 16) * 9</span>'); break; }
+          try {
+            if (!/^[0-9+\-*/().\s%^]+$/.test(argStr)) throw new Error();
+            const res = Function('"use strict"; return (' + argStr.replace(/\^/g, '**') + ')')();
+            printCopyable(`${escapeHTML(argStr)} =`, res);
+          } catch {
+            print('<span class="err">Синтаксическая ошибка в выражении.</span>');
+          }
+          break;
+        }
+
+        case 'time': {
+          const now = argStr ? new Date(Number(argStr) * (argStr.length <= 10 ? 1000 : 1)) : new Date();
+          if (isNaN(now.getTime())) { print('<span class="err">Некорректный timestamp.</span>'); break; }
+          const unix = Math.floor(now.getTime() / 1000);
+          printCopyable(`ISO: ${now.toISOString()} | Локальное: ${now.toLocaleString('ru-RU')}`, unix);
+          break;
+        }
+
+        case 'sys': {
+          const cores = navigator.hardwareConcurrency || 'N/A';
+          const mem = navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'N/A';
+          print(`<div class="grid-help">
+            <span class="accent">Дисплей:</span><span>${window.screen.width}×${window.screen.height} px (Viewport: ${window.innerWidth}×${window.innerHeight})</span>
+            <span class="accent">Потоки CPU:</span><span>${cores} логических ядер</span>
+            <span class="accent">Память (RAM):</span><span>~${mem}</span>
+            <span class="accent">Сеть:</span><span>${navigator.onLine ? 'Online' : 'Offline'}</span>
+            <span class="accent">Платформа:</span><span>${escapeHTML(navigator.platform)}</span>
+          </div>`);
+          break;
+        }
+
+        case 'theme': {
+          const target = argStr.toLowerCase();
+          if (!target) {
+            const next = themes[(themes.indexOf(themeLabel.textContent) + 1) % themes.length];
+            applyTheme(next);
+          } else if (themes.includes(target)) {
+            applyTheme(target);
+          } else {
+            print(`Доступные темы: <span class="accent">${themes.join(', ')}</span>`);
+          }
+          break;
+        }
+
+        case 'clear':
+          output.innerHTML = '';
+          break;
+
+        default:
+          print(`<span class="err">Неизвестная команда: ${escapeHTML(cmd)}</span>. Введите <span class="accent">help</span>.`);
+      }
+    }
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        exec(input.value);
+        input.value = '';
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (histIdx < history.length - 1) {
+          histIdx++;
+          input.value = history[histIdx];
+        }
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (histIdx > 0) {
+          histIdx--;
+          input.value = history[histIdx];
+        } else {
+          histIdx = -1;
+          input.value = '';
+        }
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        const current = input.value.trim().toLowerCase();
+        if (!current) return;
+        const match = cmdList.find(c => c.startsWith(current));
+        if (match) input.value = match + ' ';
+      }
+    });
+
+    exec('help');
+  </script>
+</body>
+</html>
