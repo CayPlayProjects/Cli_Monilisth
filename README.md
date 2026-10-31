@@ -50,4 +50,4 @@
 
 1. Скачай `index.html` или склонируй репозиторий:
    ```bash
-   git clone [https://github.com/твой-ник/monolith-cli.git](https://github.com/твой-ник/monolith-cli.git)
+   git clone [https://github.com/CayPlayProjects/monolith-cli.git](https://github.com/CayPlayProjects/monolith-cli.git)
