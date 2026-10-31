@@ -10,7 +10,7 @@
 ![Zero Dependencies](https://img.shields.io/badge/Dependencies-0-10b981?style=flat-square)
 ![Size](https://img.shields.io/badge/Size-~10_KB-0c0e12?style=flat-square)
 
-[**🚀 Открыть Live Demo**](https://твой-ник.github.io/monolith-cli/)
+[**🚀 Открыть Live Demo**](https://cayplayprojects.github.io/Cli_Monilisth/)
 
 </div>
 
